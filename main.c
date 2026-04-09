@@ -29,30 +29,7 @@ int main(int argc, char const* argv[])
 
 	parse_url(url, strlen(url), hostname, path);
 	dns_request(hostname, &result);
-
-	for (rp = result; rp != NULL; rp = rp->ai_next) 
-	{
-		socket_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (socket_fd == -1)
-		{
-			continue;
-		}
-		
-		if (connect(socket_fd, rp->ai_addr, rp->ai_addrlen) != -1)
-		{
-			break;
-		}
-		
-		close(socket_fd);
-	}
-
-	freeaddrinfo(result);
-
-	if (rp == NULL) 
-	{               
-		fprintf(stderr, "Could not connect\n");
-		close(socket_fd);
-	}
+	socket_fd = connect_socket();
 	
 
 
