@@ -1,4 +1,5 @@
-#define _GNU_SOURCE
+#include <ncurses.h>
+#include <openssl/crypto.h>
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -10,77 +11,118 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <sys/types.h>
-#include "parse_url.h"
-#include "connectivity.h"
-#include "web_requests.h"
 #include <err.h>
 
-#define BUFLEN 4096
+#include "web_helpers/parse_url.h"
+#include "web_helpers/connectivity.h"
+#include "web_helpers/web_requests.h"
+#include "tui/tui.h"
+#include "web_helpers/ssl_helpers.h"
 
 int main(int argc, char const* argv[])
 {
-	char url[] = "http://browser.engineering/http.html";
-
-	int socket_fd;
-	char hostname[1024] = {'\0'};
-	char path[1024] = {'\0'};
-	char request[1024];
-	struct addrinfo *result, *rp;
-
-	parse_url(url, strlen(url), hostname, path);
-	dns_request(hostname, &result);
-	socket_fd = connect_socket();
+	TUI tui;
+	tui_setup(&tui);
 	
+	int socket_fd;
+	char hostname[1024] = { '\0' };
+	char path[1024] = { '\0' };
+	char mode[6] = { '\0' };
+	
+	// Get first URL, load first website
+	char *url = read_url(tui.url_window);
 
-
-	int pipe_fd[2];
-	if(pipe(pipe_fd) == -1)
+	if(-1 == parse_url(url, mode, hostname, path))
 	{
-		fprintf(stderr, "Failed to create pipe (%s), exiting...\n", strerror(errno));
-		return -1;
-	}
-
-	pid_t pid = fork();
-	if(pid == -1)
-	{
-		fprintf(stderr, "Failed to fork (%s), exiting...\n", strerror(errno));
-		close(pipe_fd[0]);
-		close(pipe_fd[1]);
-		close(socket_fd);
-		return -1;
-	}
-
-	else if(pid == 0)
-	{
-		// Child case
-		close(pipe_fd[0]);
-		exit(wr_get(pipe_fd[1], socket_fd, path, hostname) == -1 ? EXIT_FAILURE : EXIT_SUCCESS);
-		
+		wclear(tui.text_window);
+		wprintw(tui.text_window, "Failed to resolve URL.");
+		wrefresh(tui.text_window);
 	}
 	else
 	{
-		// Parent case
-		close(pipe_fd[1]);
-		struct pollfd pfd = 
-		{
-			.fd = pipe_fd[0],
-			.events = POLLIN
-		};
-		int readcounter = 0;
-		while(1)
-		{
-			poll(&pfd, 1, -1);
-			if(pfd.revents & POLLIN)
-			{
-				splice(pipe_fd[0], NULL, STDOUT_FILENO, NULL, 4096, 0);
-			}
-			else if(pfd.revents & POLLHUP)
-			{
-				break;
-			}
-		}
-		close(pipe_fd[0]);
+		socket_fd = connect_to_host(hostname);
+		wr_get(socket_fd, path, hostname);
 	}
 	
+	free(url);
+	
+	// website is in socket_fd
+	
+
+	// load website into text window
+	char buffer[4096];
+	ssize_t bytes_read = 0;
+	ssize_t lines_printed = -1;
+	size_t max_lines = 5000;
+	while(1)
+	{
+		bytes_read = read(socket_fd, buffer, 4096);
+		if(bytes_read == 0)
+		{
+			break;
+		}
+		if(bytes_read == -1)
+		{
+			wclear(tui.text_window);
+			wprintw(tui.text_window, "%s\n", strerror(errno));
+			prefresh(tui.text_window, 0, 0, 1, 1, LINES - 5, COLS - 2);
+			break;
+		}
+
+		for (int i = 0; i < bytes_read; i++)
+		{
+			if(buffer[i] == '\r')
+			{
+				buffer[i] = ' ';
+			}
+			if(buffer[i] == '\n' || (i % COLS - 2) == 0)
+			{
+				lines_printed++;
+				if(lines_printed == max_lines)
+				{
+					wresize(tui.text_window, max_lines + 5000, COLS - 2);
+					max_lines += 5000;
+				}
+			}
+			waddch(tui.text_window, buffer[i]);
+		}
+	}
+
+	
+	noecho();
+	keypad(stdscr, TRUE);
+
+	int ch;
+	size_t pad_row = 0;
+	while(1)
+	{
+		prefresh(tui.text_window, pad_row, 0, 1, 1, LINES - 5, COLS - 2);
+		ch = getch();
+		
+		if(ch == 'q')
+		{
+			break;
+		}
+
+		switch(ch)
+		{
+			case KEY_UP:
+				if(pad_row > 0)
+				{
+					pad_row--;
+				}
+				break;
+			
+			case KEY_DOWN:
+				if(pad_row < max_lines)
+				{
+					pad_row++;
+				}
+				break;
+		}
+	}
+
 	close(socket_fd);
+	tui_shutdown();
+	return 0;
 }

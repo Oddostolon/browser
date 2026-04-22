@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "web_requests.h"
 
-int wr_get(int response_fd, int socket_fd, char* path, char* hostname)
+int wr_get(int socket_fd, char* path, char* hostname)
 {
 	char request[1024] = {'\0'};
 	
@@ -33,27 +33,5 @@ int wr_get(int response_fd, int socket_fd, char* path, char* hostname)
 		total_sent += size_sent;
 	}
 	
-	struct pollfd pfd = 
-	{
-		.fd = socket_fd,
-		.events = POLLIN
-	};
-
-	ssize_t size_read = 0;
-	size_t size_total = 0;
-	while(1)
-	{
-		poll(&pfd, 1, -1);
-		if(pfd.revents & POLLIN)
-		{
-			if(splice(socket_fd, NULL, response_fd, NULL, 4096, 0) == 0)
-			{
-				break;
-			}
-		}
-	}
-
-	close(response_fd);
-
 	return 0;
 }

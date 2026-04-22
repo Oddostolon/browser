@@ -5,10 +5,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include "connectivity.h"
+#include "parse_url.h"
 
+int connect_to_host(const char* hostname)
+{
+	int socket_fd = -1;
+	char path[1024] = { '\0' };
+	struct addrinfo *result, *rp;
+
+	dns_request(hostname, &result);
+	socket_fd = connect_socket(result);
+	
+	return socket_fd;
+}
 
 int dns_request(const char* hostname, struct addrinfo **res)
 {
@@ -29,10 +39,10 @@ int dns_request(const char* hostname, struct addrinfo **res)
 	return 0;
 }
 
-int connect_socket()
+int connect_socket(struct addrinfo *result)
 {
 	int socket_fd = 0;
-	struct addrinfo *result, *rp;
+	struct addrinfo *rp;
 
 	for (rp = result; rp != NULL; rp = rp->ai_next) 
 	{
@@ -61,10 +71,3 @@ int connect_socket()
 	return socket_fd;
 }
 
-SSL_CTX *create_ssl_ctx(void)
-{
-	const SSL_METHOD *method = TLS_client_method();
-	SSL_CTX *ctx = SSL_CTX_new(method);
-
-	return ctx;
-}

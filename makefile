@@ -1,14 +1,15 @@
 CC = ccache clang
 
 SRCS != find . -name '*.c'
+LIBS = -lssl -lcrypto -lncurses -ltinfo
 
 all: browser
 
 browser: $(SRCS)
-	$(CC) $(SRCS) -o prog
+	$(CC) $(SRCS) -o prog $(LIBS)
 
 debug: $(SRCS)
-	$(CC) -g -O0 $(SRCS) -o prog.dbg
+	$(CC) -g -O0 $(SRCS) -o prog.dbg $(LIBS)
 
 clean:
 	rm *.o prog prog.dbg
