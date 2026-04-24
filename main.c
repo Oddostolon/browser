@@ -19,24 +19,19 @@
 #include "tui/tui.h"
 #include "web_helpers/ssl_helpers.h"
 
-int main(int argc, char const* argv[])
+int visit_website(TUI *tui)
 {
-	TUI tui;
-	tui_setup(&tui);
-	
-	int socket_fd;
+	int socket_fd = -1;
 	char hostname[1024] = { '\0' };
 	char path[1024] = { '\0' };
 	char mode[6] = { '\0' };
 	
 	// Get first URL, load first website
-	char *url = read_url(tui.url_window);
+	char *url = read_url(tui);
 
 	if(-1 == parse_url(url, mode, hostname, path))
 	{
-		wclear(tui.text_window);
-		wprintw(tui.text_window, "Failed to resolve URL.");
-		wrefresh(tui.text_window);
+		print_error("Failed to resolve URL...", tui);
 	}
 	else
 	{
@@ -45,11 +40,13 @@ int main(int argc, char const* argv[])
 	}
 	
 	free(url);
-	
-	// website is in socket_fd
-	
 
-	// load website into text window
+	if(socket_fd == -1)
+	{
+		print_error("Failed to resolve URL...", tui);
+		return -1;
+	}
+
 	char buffer[4096];
 	ssize_t bytes_read = 0;
 	ssize_t lines_printed = -1;
@@ -63,30 +60,22 @@ int main(int argc, char const* argv[])
 		}
 		if(bytes_read == -1)
 		{
-			wclear(tui.text_window);
-			wprintw(tui.text_window, "%s\n", strerror(errno));
-			prefresh(tui.text_window, 0, 0, 1, 1, LINES - 5, COLS - 2);
+			print_error(strerror(errno), tui);
 			break;
 		}
-
-		for (int i = 0; i < bytes_read; i++)
-		{
-			if(buffer[i] == '\r')
-			{
-				buffer[i] = ' ';
-			}
-			if(buffer[i] == '\n' || (i % COLS - 2) == 0)
-			{
-				lines_printed++;
-				if(lines_printed == max_lines)
-				{
-					wresize(tui.text_window, max_lines + 5000, COLS - 2);
-					max_lines += 5000;
-				}
-			}
-			waddch(tui.text_window, buffer[i]);
-		}
+		
+		print_text(buffer, bytes_read, tui);
 	}
+
+	return socket_fd;
+}
+
+int main(int argc, char const* argv[])
+{
+	TUI tui;
+	tui_setup(&tui);
+	
+	int socket_fd = visit_website(&tui);
 
 	
 	noecho();
@@ -96,7 +85,7 @@ int main(int argc, char const* argv[])
 	size_t pad_row = 0;
 	while(1)
 	{
-		prefresh(tui.text_window, pad_row, 0, 1, 1, LINES - 5, COLS - 2);
+		prefresh(tui.text_window.pad, pad_row, 0, 1, 1, LINES - 5, COLS - 2);
 		ch = getch();
 		
 		if(ch == 'q')
@@ -106,23 +95,22 @@ int main(int argc, char const* argv[])
 
 		switch(ch)
 		{
-			case KEY_UP:
-				if(pad_row > 0)
-				{
-					pad_row--;
-				}
-				break;
-			
 			case KEY_DOWN:
-				if(pad_row < max_lines)
-				{
-					pad_row++;
-				}
+			case KEY_UP:
+			case KEY_NPAGE:
+			case KEY_PPAGE:
+				text_scroll(ch, &tui);
+				break;
+
+			case '/':
+				echo();
+				visit_website(&tui);
+				noecho();
 				break;
 		}
 	}
 
 	close(socket_fd);
-	tui_shutdown();
+	tui_shutdown(&tui);
 	return 0;
 }

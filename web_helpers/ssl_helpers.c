@@ -68,7 +68,19 @@ BIO *create_bio_object(int socket_fd)
 	return bio;
 }
 
-void ssl_handshake(SSL *ssl)
+int ssl_handshake(SSL *ssl)
 {
-	
+	if(SSL_connect(ssl) < 1)
+	{
+		ERR_print_errors_fp(stderr);
+		return -1;
+	}
+
+	if(SSL_get_verify_result(ssl) != X509_V_OK)
+	{
+		ERR_print_errors_fp(stderr);
+		return -1;
+	}
+
+	return 0;
 }
