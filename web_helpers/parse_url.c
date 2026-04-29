@@ -3,15 +3,15 @@
 #include <regex.h>
 #include <stdcountof.h>
 
-int parse_url(const char* url, char* mode, char* hostname, char* path)
+int parse_url(const char* url, enum MODE* mode, char* hostname, char* path)
 {
 	if(strstr(url, "http:") == NULL)
 	{
-		strcpy(mode, "https");
+		*mode = https;
 	}
 	else
 	{
-		strcpy(mode, "http");
+		*mode = http;
 	}
 
 	regex_t r_host, r_path;

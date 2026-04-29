@@ -1,7 +1,7 @@
 CC = ccache clang
 
 SRCS != find . -name '*.c'
-LIBS = -lssl -lcrypto -lncurses -ltinfo
+LIBS = -lssl -lcrypto -lncursesw -ltinfow
 
 all: browser
 

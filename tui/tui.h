@@ -1,4 +1,6 @@
-#include <ncurses.h>
+#pragma once
+
+#include <ncursesw/ncurses.h>
 #include <stdbool.h>
 
 #define PAGE_SIZE 5000
@@ -31,3 +33,4 @@ void print_error(char* text, TUI *tui);
 void clear_text(TUI *tui);
 
 void text_scroll(int ch, TUI *tui);
+

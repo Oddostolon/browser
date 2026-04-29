@@ -1,10 +1,12 @@
-#include <ncurses.h>
+#include <ncursesw/ncurses.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 #include "tui.h"
 
 void tui_setup(TUI *tui)
 {
+	setlocale(LC_ALL, "");
 	initscr();
 	cbreak();
 	refresh();
@@ -35,6 +37,7 @@ void tui_setup(TUI *tui)
 
 void text_refresh(TUI *tui)
 {
+	clearok(tui->text_window.pad, TRUE);
 	prefresh(tui->text_window.pad, 
 			tui->text_window.current_line, 0, 
 			tui->text_window.y, tui->text_window.x, 
@@ -43,6 +46,8 @@ void text_refresh(TUI *tui)
 
 char * read_url(TUI *tui)
 {
+	wclear(tui->url_window);
+	wrefresh(tui->url_window);
 	char buffer[1024] = { '\0' };
 	if(ERR == wgetnstr(tui->url_window, buffer, 1023))
 	{
@@ -78,9 +83,8 @@ void print_text(char* text, size_t len, TUI *tui)
 				tui->text_window.max_lines += PAGE_SIZE;
 			}
 		}
-
-		waddch(tui->text_window.pad, text[i]);
 	}
+	waddnstr(tui->text_window.pad, text, len);
 	text_refresh(tui);
 }
 
@@ -102,46 +106,41 @@ void clear_text(TUI *tui)
 
 void text_scroll(int ch, TUI *tui)
 {
-	size_t *line = &tui->text_window.current_line;
 	switch(ch)
 	{
 		case KEY_UP:
-			if(*line > 0)
+			if(tui->text_window.current_line > 0)
 			{
-				*line -= 1;
+				tui->text_window.current_line--;
 			}
 			break;
-
-		case KEY_PPAGE:
-			if(*line > tui->text_window.h)
-			{
-				*line -= tui->text_window.h;
-			}
-			else
-			{
-				*line = 0;
-			}
-			break;
-
 		case KEY_DOWN:
-			if(*line < tui->text_window.max_lines)
+			if(tui->text_window.current_line < tui->text_window.lines_printed)
 			{
-				*line += 1;
+				tui->text_window.current_line++;
 			}
 			break;
-
-		case KEY_NPAGE:
-			if(*line <= (tui->text_window.max_lines - tui->text_window.h))
+		case KEY_PPAGE:
+			if(tui->text_window.current_line > tui->text_window.h)
 			{
-				*line += tui->text_window.h;
+				tui->text_window.current_line -= tui->text_window.h;
 			}
 			else
 			{
-				*line = tui->text_window.max_lines;
+				tui->text_window.current_line = 0;
+			}
+			break;
+		case KEY_NPAGE:
+			if(tui->text_window.current_line < (tui->text_window.lines_printed - tui->text_window.h))
+			{
+				tui->text_window.current_line += tui->text_window.h;
+			}
+			else
+			{
+				tui->text_window.current_line = (tui->text_window.lines_printed - tui->text_window.h);
 			}
 			break;
 	}
-
 	text_refresh(tui);
 }
 
