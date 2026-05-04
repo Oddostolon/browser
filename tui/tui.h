@@ -23,14 +23,14 @@ typedef struct
 	WINDOW* tooltip_window;
 } TUI;
 
-void tui_setup(TUI *tui);
-void tui_shutdown(TUI *tui);
+void tui_setup();
+void tui_shutdown();
 
-char * read_url(TUI *tui);
+char * read_url();
 
-void print_text(char* text, size_t len, TUI *tui);
-void print_error(char* text, TUI *tui);
-void clear_text(TUI *tui);
+void print_text(char* text, size_t len);
+void print_error(char *text, ...);
+void clear_text();
 
-void text_scroll(int ch, TUI *tui);
+void text_scroll(int ch);
 

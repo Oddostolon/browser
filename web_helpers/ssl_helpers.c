@@ -24,10 +24,12 @@ SSL *create_ssl_object(char *hostname, int socket_fd)
 	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
 	if(0 == SSL_CTX_set_default_verify_paths(ctx))
 	{
+		SSL_CTX_free(ctx);
 		return NULL;
 	}
 	if(0 == SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION))
 	{
+		SSL_CTX_free(ctx);
 		return NULL;
 	}
 	
@@ -40,20 +42,24 @@ SSL *create_ssl_object(char *hostname, int socket_fd)
 
 	if(0 == SSL_set_tlsext_host_name(ssl, hostname))
 	{
+		SSL_free(ssl);
 		return NULL;
 	}
 	if(0 == SSL_set1_host(ssl, hostname))
 	{
+		SSL_free(ssl);
 		return NULL;
 	}
 	SSL_set_fd(ssl, socket_fd);
 
 	if(1 != SSL_connect(ssl))
 	{
+		SSL_free(ssl);
 		return NULL;
 	}
 	if(X509_V_OK != SSL_get_verify_result(ssl))
 	{
+		SSL_free(ssl);
 		return NULL;
 	}
 

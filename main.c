@@ -1,4 +1,5 @@
 #include <openssl/crypto.h>
+#include <string.h>
 #include <sys/poll.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -13,15 +14,18 @@
 #include "web_helpers/web_requests.h"
 #include "tui/tui.h"
 #include "web_helpers/ssl_helpers.h"
-#include "actions/open_website.h"
+#include "actions/open_document.h"
 
 int main(int argc, char const* argv[])
 {
-	TUI tui;
-	tui_setup(&tui);
+	tui_setup();
 	noecho();
 
-	int socket_fd = open_website(&tui);
+	char *document = open_document();
+	if(NULL != document)
+	{
+		print_text(document, strlen(document));
+	}
 
 	keypad(stdscr, TRUE);
 
@@ -40,16 +44,21 @@ int main(int argc, char const* argv[])
 			case KEY_UP:
 			case KEY_NPAGE:
 			case KEY_PPAGE:
-				text_scroll(ch, &tui);
+				text_scroll(ch);
 				break;
 
 			case '/':
-				socket_fd = open_website(&tui);
+				free(document);
+				document = open_document();
+				if(NULL != document)
+				{
+					print_text(document, strlen(document));
+				}
 				break;
 		}
 	}
 
-	close(socket_fd);
-	tui_shutdown(&tui);
+	free(document);
+	tui_shutdown();
 	return 0;
 }

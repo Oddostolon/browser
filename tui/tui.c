@@ -4,8 +4,12 @@
 #include <locale.h>
 #include "tui.h"
 
-void tui_setup(TUI *tui)
+static TUI *tui = NULL;
+
+void tui_setup()
 {
+	tui = malloc(sizeof(TUI));
+
 	setlocale(LC_ALL, "");
 	initscr();
 	cbreak();
@@ -35,7 +39,7 @@ void tui_setup(TUI *tui)
 	tui->tooltip_window = newwin(1, COLS, LINES - 1, 0);
 }
 
-void text_refresh(TUI *tui)
+void text_refresh()
 {
 	clearok(tui->text_window.pad, TRUE);
 	prefresh(tui->text_window.pad, 
@@ -44,7 +48,7 @@ void text_refresh(TUI *tui)
 			tui->text_window.h, tui->text_window.w);
 }
 
-char * read_url(TUI *tui)
+char * read_url()
 {
 	wclear(tui->url_window);
 	wrefresh(tui->url_window);
@@ -64,9 +68,9 @@ char * read_url(TUI *tui)
 	return retval;
 }
 
-void print_text(char* text, size_t len, TUI *tui)
+void print_text(char* text, size_t len)
 {
-	for(int i = 0; i < len; i++)
+	for(int i = 0; i < len;)
 	{
 		if(text[i] == '\r')
 		{
@@ -83,28 +87,51 @@ void print_text(char* text, size_t len, TUI *tui)
 				tui->text_window.max_lines += PAGE_SIZE;
 			}
 		}
+
+		unsigned char ch = text[i];
+
+		if((ch & 0b10000000) == 0)
+		{
+			i++;
+		}
+		else if((ch & 0b11000000) == 0)
+		{
+			i += 2;
+		}
+		else if((ch & 0b11100000) == 0)
+		{
+			i += 3;
+		}
+		else if((ch & 0b11110000) == 0)
+		{
+			i += 4;
+		}
+		else
+		{
+			i++;
+		}
 	}
 	waddnstr(tui->text_window.pad, text, len);
-	text_refresh(tui);
+	text_refresh();
 }
 
-void print_error(char* text, TUI *tui)
+void print_error(char *text, ...)
 {
 	wclear(tui->text_window.pad);
 	wprintw(tui->text_window.pad, "%s", text);
 
 	tui->text_window.current_line = 0;
-	text_refresh(tui);
+	text_refresh();
 }
 
-void clear_text(TUI *tui)
+void clear_text()
 {
 	wclear(tui->text_window.pad);
 
-	text_refresh(tui);
+	text_refresh();
 }
 
-void text_scroll(int ch, TUI *tui)
+void text_scroll(int ch)
 {
 	switch(ch)
 	{
@@ -141,16 +168,18 @@ void text_scroll(int ch, TUI *tui)
 			}
 			break;
 	}
-	text_refresh(tui);
+	text_refresh();
 }
 
-void tui_shutdown(TUI *tui)
+void tui_shutdown()
 {
 	delwin(tui->tooltip_window);
 	delwin(tui->url_window);
 	delwin(tui->url_frame);
 	delwin(tui->text_window.pad);
 	delwin(tui->text_frame);
+
+	free(tui);
 
 	endwin();
 }

@@ -3,7 +3,8 @@
 enum MODE 
 {
 	http,
-	https
+	https,
+	file
 };
 
 int parse_url(const char* url, enum MODE* mode, char* hostname, char* path);

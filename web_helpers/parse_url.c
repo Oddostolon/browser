@@ -5,7 +5,17 @@
 
 int parse_url(const char* url, enum MODE* mode, char* hostname, char* path)
 {
-	if(strstr(url, "http:") == NULL)
+	if(strstr(url, "file://") != NULL)
+	{
+		if(strlen(url) == 7)
+		{
+			return -1;
+		}
+		strcpy(path, url + 8);
+		*mode = file;
+		return 0;
+	}
+	else if(strstr(url, "http:") == NULL)
 	{
 		*mode = https;
 	}
