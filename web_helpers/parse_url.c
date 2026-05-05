@@ -24,7 +24,7 @@ int parse_url(const char* url, enum MODE* mode, char* hostname, char* path)
 		*mode = http;
 	}
 
-	regex_t r_host, r_path;
+	regex_t r_host;
 	regmatch_t p_host, p_path;
 
 	if(regcomp(&r_host, "([a-z0-9-]+\\.)?[a-z0-9-]+\\.[a-z0-9-]+(\\.[a-z0-9-]+)?", 
@@ -36,6 +36,8 @@ int parse_url(const char* url, enum MODE* mode, char* hostname, char* path)
 	{
 		return -1;
 	}
+
+	regfree(&r_host);
 
 	strncpy(hostname, url + p_host.rm_so, p_host.rm_eo - p_host.rm_so);
 	

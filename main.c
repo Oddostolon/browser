@@ -1,3 +1,4 @@
+#include <bits/types/siginfo_t.h>
 #include <openssl/crypto.h>
 #include <string.h>
 #include <sys/poll.h>
@@ -8,6 +9,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <err.h>
+#include <signal.h>
 
 #include "web_helpers/parse_url.h"
 #include "web_helpers/connectivity.h"
@@ -16,10 +18,25 @@
 #include "web_helpers/ssl_helpers.h"
 #include "actions/open_document.h"
 
+volatile sig_atomic_t sigint_received = 0;
+
+void sigint_handler(int s)
+{
+	sigint_received = 1;
+}
+
 int main(int argc, char const* argv[])
 {
 	tui_setup();
 	noecho();
+
+	struct sigaction sa;
+	sa.sa_handler = sigint_handler;
+	if(-1 == sigaction(SIGINT, &sa, NULL))
+	{
+		perror("sigaction failed");
+		return -1;
+	}
 
 	char *document = open_document();
 	if(NULL != document)
@@ -30,7 +47,7 @@ int main(int argc, char const* argv[])
 	keypad(stdscr, TRUE);
 
 	int ch;
-	while(1)
+	while(!sigint_received)
 	{
 		ch = getch();
 		if(ch == 'q')

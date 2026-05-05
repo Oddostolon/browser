@@ -1,5 +1,6 @@
 #include <ncurses.h>
 #include <openssl/crypto.h>
+#include <openssl/ssl.h>
 #include <sys/poll.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -25,6 +26,7 @@ char * open_website(int socket_fd, SSL* ssl, char *hostname, char *path)
 	if(-1 == wr_get(socket_fd, ssl, hostname, path))
 	{
 		print_error("Failed to retrieve website at %s from %s", path, hostname);
+		SSL_free(ssl);
 		return NULL;
 	}
 
@@ -65,6 +67,7 @@ char * open_website(int socket_fd, SSL* ssl, char *hostname, char *path)
 	}
 	document[bytes_total] = '\0';
 
+	SSL_free(ssl);
 	return document;
 }
 
